@@ -13,9 +13,9 @@ def figcolor(figura_hsv):
 
     green_lower = np.array([40, 100, 100], np.uint8)
     green_upper = np.array([90, 255, 255], np.uint8)
-
-    yellow_lower = np.array([20, 100, 100], np.uint8)
-    yellow_upper = np.array([30, 255, 255], np.uint8)
+    # Ajuste de amarillo: ampliar un poco el rango y permitir saturación/valor más bajos
+    yellow_lower = np.array([15, 80, 80], np.uint8)
+    yellow_upper = np.array([35, 255, 255], np.uint8)
 
     rojo_mask1 = cv2.inRange(figura_hsv, ROJO_lower, ROJO_upper)
     rojo_mask2 = cv2.inRange(figura_hsv, rojo2_lower, rojo2_upper)
@@ -76,9 +76,10 @@ img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
 for c in contorno[0]:
     x, y, w, h = cv2.boundingRect(c)
-    img_aux = np.zeros(img_hsv.shape, dtype=np.uint8)
-    cv2.drawContours(img_aux, [c], -1, (255, 255, 255), -1)
-    mask_hsv = cv2.bitwise_and(img_hsv, img_aux)
+    # Crear máscara de un solo canal para el contorno y aplicar como máscara
+    mask = np.zeros((img_hsv.shape[0], img_hsv.shape[1]), dtype=np.uint8)
+    cv2.drawContours(mask, [c], -1, 255, -1)
+    mask_hsv = cv2.bitwise_and(img_hsv, img_hsv, mask=mask)
     
     fill_all = figura(w, h, c) + ' ' + figcolor(mask_hsv)
     cv2.putText(img, fill_all, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
