@@ -12,15 +12,36 @@ numeros_detectados = set()
 procesando_ocr = False
 MAX_NUMERO = 810
 ejecutando = True
+nombre_jugador = "Desconocido"
+fecha_juego = "--/--/----"
+numero_juego = "-"
 
 def extraer_numeros_ocr(imagen):
-    global numeros_detectados, procesando_ocr
+    global numeros_detectados, procesando_ocr, nombre_jugador, fecha_juego, numero_juego
     procesando_ocr = True
     try:
         gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
         procesada = cv2.adaptiveThreshold(gris, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 9, 5)
         
         texto_completo = pytesseract.image_to_string(procesada, lang='eng', config='--psm 3')
+        
+        # Extraer Numero de Juego
+        match_num = re.search(r'Numero de Juego\s*\n+\s*([a-zA-Z0-9]+)', texto_completo, re.IGNORECASE)
+        if match_num:
+            val = match_num.group(1).lower()
+            numero_juego = "1" if val in ['i', 'l', '1'] else val
+            
+        # Extraer Fecha
+        match_fecha = re.search(r'(\d{1,2}/\d{1,2}/\d{2,4})', texto_completo)
+        if match_fecha:
+            fecha_juego = match_fecha.group(1)
+            
+        # Extraer Nombre
+        match_nombre = re.search(r'Nombre de Jugador[^\n]*\n+(?:[0-9]+\s*\n+)*([A-Za-z\s]+)', texto_completo, re.IGNORECASE)
+        if match_nombre:
+            n = match_nombre.group(1).strip()
+            if len(n) > 2:
+                nombre_jugador = ' '.join(n.split())
         
         nombre_match = re.search(r'Nombre de Jugador\n+([^\n]+)', texto_completo, re.IGNORECASE)
         texto_para_numeros = texto_completo[nombre_match.end():] if nombre_match else texto_completo
@@ -48,13 +69,16 @@ def crear_panel_tablero(nums):
     tablero = np.zeros((alto, ancho, 3), dtype=np.uint8)
     tablero[:] = (30, 30, 30) # Gris super oscuro de fondo
     
-    cv2.putText(tablero, "TABLERO BINGO", (250, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-    cv2.putText(tablero, f"Detectados: {len(nums)} / {MAX_NUMERO}", (250, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+    cv2.putText(tablero, "TABLERO BINGO", (250, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    cv2.putText(tablero, f"Detectados: {len(nums)} / {MAX_NUMERO}", (250, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+    
+    info_text = f"Jugador: {nombre_jugador} | Fecha: {fecha_juego} | Juego: {numero_juego}"
+    cv2.putText(tablero, info_text, (20, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
     
     columnas = 30
     filas = 27
     margen_x = 20
-    margen_y = 110
+    margen_y = 120
     ancho_celda = (ancho - 2 * margen_x) // columnas
     alto_celda = (alto - margen_y - 20) // filas
     
