@@ -20,33 +20,47 @@ def extraer_numeros_ocr(imagen):
     global numeros_detectados, procesando_ocr, nombre_jugador, fecha_juego, numero_juego
     procesando_ocr = True
     try:
-        gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
-        procesada = cv2.adaptiveThreshold(gris, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 9, 5)
+        # 1. Mejora de la imagen para números pequeños y grids
+        # Redimensionar (upscaling) ayuda a Tesseract con números pequeños
+        alto, ancho = imagen.shape[:2]
+        imagen_grande = cv2.resize(imagen, (ancho * 2, alto * 2), interpolation=cv2.INTER_CUBIC)
         
-        texto_completo = pytesseract.image_to_string(procesada, lang='eng', config='--psm 3')
+        gris = cv2.cvtColor(imagen_grande, cv2.COLOR_BGR2GRAY)
         
-        # Extraer Numero de Juego
-        match_num = re.search(r'Numero de Juego\s*\n+\s*([a-zA-Z0-9]+)', texto_completo, re.IGNORECASE)
+        # 2. Umbralización adaptativa ajustada para grids de bingo
+        # Usamos un bloque más grande (11) y una constante (2) para no borrar trazos finos
+        procesada = cv2.adaptiveThreshold(gris, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        
+        # 3. Configuración PSM 3: Automática (mejor para páginas con cabecera y tablas)
+        config_tess = '--psm 3'
+        texto_completo = pytesseract.image_to_string(procesada, lang='eng', config=config_tess)
+        
+        # --- EXTRACCIÓN DE METADATOS ---
+        
+        # Extraer Numero de Juego (Flexible: misma línea o siguiente)
+        match_num = re.search(r'(?:Numero de Juego|Juego)\s*[:\-]?\s*([a-zA-Z0-9]+)', texto_completo, re.IGNORECASE)
         if match_num:
             val = match_num.group(1).lower()
+            # Normalizar el '1' que a veces se lee como 'i' o 'l'
             numero_juego = "1" if val in ['i', 'l', '1'] else val
             
-        # Extraer Fecha
-        match_fecha = re.search(r'(\d{1,2}/\d{1,2}/\d{2,4})', texto_completo)
+        # Extraer Fecha (Busca cualquier patrón DD/MM/YYYY cerca de la palabra Fecha o solo el patrón)
+        match_fecha = re.search(r'Fecha[^\d]*(\d{1,2}/\d{1,2}/\d{2,4})', texto_completo, re.IGNORECASE)
+        if not match_fecha:
+            match_fecha = re.search(r'(\d{1,2}/\d{1,2}/\d{2,4})', texto_completo)
+            
         if match_fecha:
             fecha_juego = match_fecha.group(1)
             
-        # Extraer Nombre
-        match_nombre = re.search(r'Nombre de Jugador[^\n]*\n+(?:[0-9]+\s*\n+)*([A-Za-z\s]+)', texto_completo, re.IGNORECASE)
+        # Extraer Nombre (Busca texto después de Nombre de Jugador)
+        match_nombre = re.search(r'Nombre de Jugador\s*[:\-]?\s*([A-Za-z\s]{3,})', texto_completo, re.IGNORECASE)
         if match_nombre:
             n = match_nombre.group(1).strip()
-            if len(n) > 2:
-                nombre_jugador = ' '.join(n.split())
-        
-        nombre_match = re.search(r'Nombre de Jugador\n+([^\n]+)', texto_completo, re.IGNORECASE)
-        texto_para_numeros = texto_completo[nombre_match.end():] if nombre_match else texto_completo
+            nombre_jugador = ' '.join(n.split()) # Limpia espacios extra
             
-        todos_los_numeros = re.findall(r'\b\d{1,3}\b', texto_para_numeros)
+        # --- EXTRACCIÓN DE NÚMEROS DEL TABLERO ---
+            
+        todos_los_numeros = re.findall(r'\b\d{1,3}\b', texto_completo)
         nuevos_nums = {int(n) for n in todos_los_numeros if 1 <= int(n) <= MAX_NUMERO}
         
         # En modo vivo, es mejor acumular lo que la IA lee bien cada segundo
@@ -160,6 +174,9 @@ def modo_estatico():
     img = cv2.imread('TMPI_T2_4BINGO/bingo_tablero.png')
     if img is not None:
         print("Escaneando imagen estática, por favor espera un momento...")
+        # Limpiar detecciones previas
+        numeros_detectados.clear()
+        
         extraer_numeros_ocr(img)
         panel_mostrar = crear_panel_tablero(numeros_detectados)
         img_mostrar = cv2.resize(img, (640, 720))
