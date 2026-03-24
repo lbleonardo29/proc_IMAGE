@@ -1,16 +1,3 @@
-# =============================================================================
-# word_builder.py — Lógica de construcción de palabras y guardado de texto
-#
-# Responsabilidad única: mantener el estado del texto que se va construyendo
-# y exponer métodos claros para manipularlo.
-#
-# Por qué una clase separada para esto:
-#   La lógica de "qué hacer con las letras reconocidas" es completamente
-#   independiente de "cómo se reconocen las letras". Separar estas dos
-#   responsabilidades hace que main.py sea más limpio y que esta lógica
-#   sea fácil de probar por separado.
-# =============================================================================
-
 import os
 from datetime import datetime
 from config import RUTA_SALIDA_TEXTO
@@ -40,10 +27,6 @@ class WordBuilder:
         self.word_actual = ""
         self.text_final  = ""
         self.historial   = []  # lista de eventos para debug y reporte
-
-    # -------------------------------------------------------------------------
-    # MÉTODOS PRINCIPALES
-    # -------------------------------------------------------------------------
 
     def agregar_letra(self, letra):
         """
@@ -89,7 +72,6 @@ class WordBuilder:
         Returns:
             ruta del archivo guardado, o None si no había texto
         """
-        # Si hay una palabra incompleta, la guardamos
         if self.word_actual:
             print(f"  [WordBuilder] Guardando palabra pendiente: '{self.word_actual}'")
             self.fin_palabra()
@@ -111,7 +93,7 @@ class WordBuilder:
             ruta_archivo: string con la ruta donde se guardó el archivo
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        nombre_archivo = f"palabras_{timestamp}.txt"
+        nombre_archivo = f"Ballesteros_{timestamp}.txt"
         ruta_archivo = os.path.join(
             os.path.dirname(RUTA_SALIDA_TEXTO),
             nombre_archivo
@@ -124,10 +106,6 @@ class WordBuilder:
 
         print(f"\n  [WordBuilder] Archivo guardado: {ruta_archivo}")
         return ruta_archivo
-
-    # -------------------------------------------------------------------------
-    # MÉTODOS DE CONSULTA (getters)
-    # -------------------------------------------------------------------------
 
     def obtener_word_actual(self):
         """Devuelve la palabra que se está construyendo actualmente."""
@@ -153,10 +131,6 @@ class WordBuilder:
         self.word_actual = ""
         self.text_final  = ""
         self.historial   = []
-
-    # -------------------------------------------------------------------------
-    # MÉTODOS PRIVADOS
-    # -------------------------------------------------------------------------
 
     def _generar_contenido_archivo(self, timestamp):
         """
