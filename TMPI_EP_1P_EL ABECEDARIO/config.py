@@ -73,6 +73,31 @@ ALFABETO = [
 NUM_CLASES = len(ALFABETO)  # 27
 
 # -----------------------------------------------------------------------------
+# SECCIÓN 5B: Nombres de carpeta seguros para Windows
+#
+# cv2.imwrite() en Windows falla silenciosamente cuando la ruta contiene
+# caracteres especiales como 'Ñ' porque usa la API de C++ que no maneja
+# bien UTF-8 en rutas de Windows. La solución es usar solo caracteres ASCII
+# en los nombres de carpeta y mantener un diccionario de mapeo.
+#
+# IMPORTANTE: este mapeo solo afecta los nombres de CARPETAS en disco.
+# Las etiquetas del modelo, la pantalla y el archivo .txt siguen usando
+# 'Ñ' correctamente. El usuario nunca ve "NTILDE", solo el sistema de archivos.
+# -----------------------------------------------------------------------------
+CARPETA_SEGURA = {
+    'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'E': 'E',
+    'F': 'F', 'G': 'G', 'H': 'H', 'I': 'I', 'J': 'J',
+    'K': 'K', 'L': 'L', 'M': 'M', 'N': 'N', 'Ñ': 'NTILDE',
+    'O': 'O', 'P': 'P', 'Q': 'Q', 'R': 'R', 'S': 'S',
+    'T': 'T', 'U': 'U', 'V': 'V', 'W': 'W', 'X': 'X',
+    'Y': 'Y', 'Z': 'Z'
+}
+
+# Diccionario inverso: de nombre de carpeta → letra real
+# Usado al cargar el dataset en train_model.py para recuperar la etiqueta correcta
+CARPETA_A_LETRA = {v: k for k, v in CARPETA_SEGURA.items()}
+
+# -----------------------------------------------------------------------------
 # SECCIÓN 6: Hiperparámetros del modelo SVM
 # C controla el balance entre margen amplio y errores de clasificación.
 #   - C pequeño (0.1-1): más margen, acepta más errores → menos sobreajuste

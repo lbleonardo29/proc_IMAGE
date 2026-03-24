@@ -142,8 +142,18 @@ def guardar_imagen_letra(trayectoria, ruta_archivo):
     Renderiza la trayectoria y guarda la imagen resultante en disco.
 
     Usada exclusivamente por collect_data.py para construir el dataset.
-    Guarda el canvas como archivo PNG (sin pérdida de calidad, a diferencia
-    de JPEG que comprime y puede alterar los valores de píxeles).
+
+    Por qué usamos cv2.imencode() + open() en lugar de cv2.imwrite():
+        cv2.imwrite() en Windows usa internamente la API de C++ de OpenCV
+        que NO maneja rutas con caracteres Unicode (tildes, Ñ, espacios
+        con codificación especial, etc.). Devuelve False silenciosamente
+        sin lanzar ningún error, lo que hace muy difícil detectar el problema.
+
+        La solución es separar las dos operaciones:
+        1. cv2.imencode('.png', canvas) → codifica la imagen en memoria
+           como bytes PNG, sin tocar el sistema de archivos.
+        2. open(ruta, 'wb').write(bytes) → escribe los bytes en disco
+           usando Python nativo, que sí maneja correctamente Unicode en Windows.
 
     Args:
         trayectoria: lista de tuplas (x, y) del tracker
@@ -156,17 +166,24 @@ def guardar_imagen_letra(trayectoria, ruta_archivo):
     canvas = trayectoria_a_canvas(trayectoria)
 
     if canvas.sum() == 0:
-        # El canvas quedó completamente negro: la trayectoria era inválida
         print(f"  [ADVERTENCIA] Canvas vacío, imagen no guardada: {ruta_archivo}")
         return False
 
-    exito = cv2.imwrite(ruta_archivo, canvas)
+    # Codificar imagen en memoria como bytes PNG
+    exito, buffer = cv2.imencode('.png', canvas)
 
     if not exito:
-        print(f"  [ERROR] No se pudo guardar: {ruta_archivo}")
+        print(f"  [ERROR] No se pudo codificar la imagen: {ruta_archivo}")
         return False
 
-    return True
+    # Escribir bytes en disco usando Python nativo (compatible con Unicode en Windows)
+    try:
+        with open(ruta_archivo, 'wb') as f:
+            f.write(buffer.tobytes())
+        return True
+    except Exception as e:
+        print(f"  [ERROR] No se pudo guardar: {ruta_archivo} → {e}")
+        return False
 
 
 def dibujar_trayectoria_en_frame(frame, trayectoria, color=(0, 255, 0), grosor=2):
